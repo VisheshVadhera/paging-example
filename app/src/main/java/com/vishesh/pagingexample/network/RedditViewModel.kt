@@ -10,9 +10,6 @@ import io.reactivex.ObservableTransformer
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
-import retrofit2.Call
-import retrofit2.Response
-import java.io.IOException
 import java.util.concurrent.Executor
 
 
@@ -118,48 +115,27 @@ class ItemKeyedSubredditDataSource(
     }
 
     override fun loadInitial(params: LoadInitialParams<String>, callback: LoadInitialCallback<RedditPost>) {
-        val request = redditService.getTop(subredditName, params.requestedLoadSize)
-
-        try {
-            val response = request.execute()
-            val items = response.body()?.data?.children?.map { it.data }
-            retry = null
-            pageSubject.onNext(Result.NetworkStateResult(NetworkState.LOADED))
-            callback.onResult(items!!)
-        } catch (e: IOException) {
-            retry = { loadInitial(params, callback) }
-            pageSubject.onNext(Result.NetworkStateResult(NetworkState.ERROR))
-        }
-
+        redditService.getTop(subredditName, params.requestedLoadSize)
+                .map { it.data.children.map { it.data } }
+                .doOnSubscribe { pageSubject.onNext(Result.NetworkStateResult(NetworkState.LOADING)) }
+                .doOnNext { retry = null }
+                .doOnNext { pageSubject.onNext(Result.NetworkStateResult(NetworkState.LOADED)) }
+                .doOnNext { callback.onResult(it) }
+                .doOnError { pageSubject.onNext(Result.NetworkStateResult(NetworkState.ERROR)) }
+                .doOnError { retry = { loadInitial(params, callback) } }
+                .subscribe()
     }
 
     override fun loadAfter(params: LoadParams<String>, callback: LoadCallback<RedditPost>) {
-        redditService
-                .getTopAfter(subredditName, params.key, params.requestedLoadSize)
-                .enqueue(object : retrofit2.Callback<RedditService.ListingResponse> {
-                    override fun onFailure(
-                            call: Call<RedditService.ListingResponse>?,
-                            t: Throwable?) {
-                        retry = { loadAfter(params, callback) }
-                        pageSubject.onNext(Result.NetworkStateResult(NetworkState.ERROR))
-                    }
-
-                    override fun onResponse(
-                            call: Call<RedditService.ListingResponse>?,
-                            response: Response<RedditService.ListingResponse>) {
-                        if (response.isSuccessful) {
-                            val items = response.body()?.data?.children?.map { it.data }
-                            retry = null
-                            callback.onResult(items!!)
-                            pageSubject.onNext(Result.NetworkStateResult(NetworkState.LOADED))
-                        } else {
-                            retry = { loadAfter(params, callback) }
-                            pageSubject.onNext(Result.NetworkStateResult(NetworkState.ERROR))
-                        }
-                    }
-                })
-
-
+        redditService.getTopAfter(subredditName, params.key, params.requestedLoadSize)
+                .map { it.data.children.map { it.data } }
+                .doOnSubscribe { pageSubject.onNext(Result.NetworkStateResult(NetworkState.LOADING)) }
+                .doOnError { retry = { loadAfter(params, callback) } }
+                .doOnError { pageSubject.onNext(Result.NetworkStateResult(NetworkState.ERROR)) }
+                .doOnNext { retry = null }
+                .doOnNext { callback.onResult(it) }
+                .doOnNext { pageSubject.onNext(Result.NetworkStateResult(NetworkState.LOADED)) }
+                .subscribe()
     }
 
     override fun loadBefore(params: LoadParams<String>, callback: LoadCallback<RedditPost>) {

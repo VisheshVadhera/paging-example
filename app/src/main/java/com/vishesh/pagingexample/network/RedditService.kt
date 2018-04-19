@@ -14,7 +14,7 @@ import retrofit2.http.Query
 
 interface RedditService {
 
-    /*@GET("/r/{subreddit}/hot.json")
+    @GET("/r/{subreddit}/hot.json")
     fun getTop(@Path("subreddit") subreddit: String,
                @Query("limit") limit: Int): Observable<ListingResponse>
 
@@ -22,20 +22,7 @@ interface RedditService {
     fun getTopAfter(
             @Path("subreddit") subreddit: String,
             @Query("after") after: String,
-            @Query("limit") limit: Int): Observable<ListingResponse>*/
-
-    @GET("/r/{subreddit}/hot.json")
-    fun getTop(
-            @Path("subreddit") subreddit: String,
-            @Query("limit") limit: Int): Call<ListingResponse>
-
-    // for after/before param, either get from RedditDataResponse.after/before,
-    // or pass RedditNewsDataResponse.name (though this is technically incorrect)
-    @GET("/r/{subreddit}/hot.json")
-    fun getTopAfter(
-            @Path("subreddit") subreddit: String,
-            @Query("after") after: String,
-            @Query("limit") limit: Int): Call<ListingResponse>
+            @Query("limit") limit: Int): Observable<ListingResponse>
 
     class ListingResponse(val data: ListingData)
 
