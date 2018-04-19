@@ -28,7 +28,7 @@ class RedditViewModel(private val repo: RedditPostRepository) {
             val connectableObservable = it
                                 .ofType(UiIntent.ShowReddit::class.java)
                                 .flatMap { repo.postsOfSubreddit(it.subredditName, 30) }
-                    .publish().autoConnect()
+                    .share()
 
                         val pagedList = connectableObservable
                                 .ofType(PagedList::class.java)
@@ -96,6 +96,7 @@ class InMemoryByItemRepo(
                 .setFetchScheduler(Schedulers.io())
 //                .setNotifyScheduler(AndroidSchedulers.mainThread())
                 .buildObservable()
+
 
         /*val statusUpdates = sourceFactory
                 .subject
